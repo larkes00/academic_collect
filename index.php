@@ -12,6 +12,7 @@ $RESULT = [
 	'debug' => []
 ];
 
+
 /* ENVIRONMENT SETUP */
 define('ROOT', $_SERVER['DOCUMENT_ROOT'] . '/'); // Unity entrypoint;
 
@@ -51,12 +52,36 @@ function printme ( Mixed $var ):void {
  */
 function handler (Throwable $e):void {
 	global $RESULT;
-	$codes = ['RESOURCE_LOST' => 4, 'INTERNAL_ERROR' => 6];
+	$codes = [
+		'REQUEST_INCOMPLETE' => [
+			1, 
+			'Неповний запит'
+		],
+		'REQUEST_INCORRECT' => [
+			2,
+			'Некоректний запит'
+		],
+		'RESOURCE_LOST' => [
+			4,
+			'Ресурс не знайдено'
+		],
+		'REQUEST_UNKNOWN' => [
+			5,
+			'Метод не підтримується'
+		],
+		'INTERNAL_ERROR' => [
+			6,
+			'Внутрішня помилка'
+		]
+	];
 	$message = $e -> getMessage();
-	$RESULT['state'] = (isset($codes[$message])) ? $codes[$message] : 6;
+	$splitMessage = explode(" ", $e);
+	$RESULT['state'] = (isset($codes[$splitMessage[1]][0])) ? $codes[$splitMessage[1]][0] : 6;
+	$RESULT['data'] = [$splitMessage[2]];
+	$RESULT['message'] = $codes[$splitMessage[1]][1];
 	$RESULT[ 'debug' ][] = [
 		'type' => get_class($e),
-		'details' => $message,
+		'details' => $splitMessage[1],
 		'file' => $e -> getFile(),
 		'line' => $e -> getLine(),
 		'trace' => $e -> getTrace()
@@ -78,11 +103,9 @@ function shutdown():void {
 $CORE = new Controller\Main;
 $data = $CORE->exec();
 
-if (isset($data['state'])) {
-	$RESULT = $data;
-} else if (isset($data)) {
+if ($data !== null)
 	$RESULT['data'] = $data;
-} else { // Error happens
+else { // Error happens
 	$RESULT['state'] = 6;
 	$RESULT['errors'] = ['INTERNAL_ERROR'];
 	unset($RESULT['data']);

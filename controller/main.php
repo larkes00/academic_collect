@@ -30,81 +30,38 @@ class Main
 						$patternFile = ROOT . 'model/config/patterns.php';
 						include $patternFile;
 						if (empty($var) && !$param['required']) { // Если значения нету и параметр не обязательный
-							if (isset($param['default'])) {
-								$request[$param['name']] = $param['default'];
-							} else {
-								return [
-									"state" => 6,
-									"data" => [
-										$param['name']
-									],
-									'error' => 'INTERNAL_ERROR',
-									"message" => "Внутрішня помилка"
-								];
+							if (!isset($param['default'])) {
+								throw new \Exception("INTERNAL_ERROR" . " ". $param['name']);
 							}
+							$request[$param['name']] = $param['default'];
 						} else if (empty($var) && $param['required']) {
-							return [
-								"state" => 1,
-								"data" => [
-									$param['name']
-								],
-								'error' => 'REQUEST_INCOMPLETE',
-								"message" => "Неповний запит"
-							];
+							throw new \Exception("REQUEST_INCOMPLETE" . " ". $param['name']);
 						} else if (isset($var)) { // Есть значения и параметр обязательный
-							if (isset($param['pattern'])) { // Если есть шаблон
-								if (preg_match($patterns[$param['pattern']]['regex'], $var)) { // Проверяем на соотвествие паттерну
-									if (isset($patterns[$param['pattern']]['callback'])) {
-										$var = preg_replace_callback($patterns[$param['pattern']]['replacement'], $patterns[$param['pattern']]['callback'], $var);
-									}
-									$request[$param['name']] = $var;
-								} else {
-									return [
-										"state" => 2,
-										"data" => [
-											$param['name']
-										],
-										'error' => 'REQUEST_INCORRECT',
-										"message" => "Некоректний запит"
-									];
-								}
-							} else {
-								return [
-									"state" => 2,
-									"data" => [
-										$param['name']
-									],
-									'error' => 'REQUEST_INCORRECT',
-									"message" => "Некоректний запит"
-								];
+							if (!isset($param['pattern'])) {
+								throw new \Exception("REQUEST_INCORRECT" . " ". $param['name']);
+							} else if (!preg_match($patterns[$param['pattern']]['regex'], $var)) {
+								throw new \Exception("REQUEST_INCORRECT" . " ". $param['name']);
 							}
+							if (isset($patterns[$param['pattern']]['callback'])) {
+								$var = preg_replace_callback(
+									$patterns[$param['pattern']]['replacement'],
+									$patterns[$param['pattern']]['callback'], 
+									$var
+								);
+							}
+							$request[$param['name']] = $var;
 						}
 					}
 					if (method_exists($this->model, $path[1] . $path[2])) {
 						$method = [$this->model, $path[1] . $path[2]];
 						$result = $method($request);
 					} else {
-						return [
-							"state" => 5,
-							"data" => [
-								$param['name']
-							],
-							'error' => 'REQUEST_UNKNOWN',
-							"message" => "Метод не підтримується"
-						];
+						throw new \Exception("REQUEST_UNKNOWN");
 					}
 
 				} else {
-					return [
-						"state" => 5,
-						"data" => [
-							$param['name']
-						],
-						'error' => 'REQUEST_UNKNOWN',
-						"message" => "Метод не підтримується"
-					];
+					throw new \Exception("REQUEST_UNKNOWN");
 				}
-
 			}
 		} 
 		return $result;
